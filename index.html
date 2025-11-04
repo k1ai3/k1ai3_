@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K1 Ai Multimode Chatbot (Vision & Image Generation)</title>
+    <!-- Load Tailwind CSS for modern styling and responsiveness -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a vibrant dark, mobile-friendly interface */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Deep space dark background */
+        }
+        /* Custom scrollbar for chat history: Neon Teal */
+        #chat-history::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-history::-webkit-scrollbar-thumb {
+            background-color: #14b8a6; /* Neon Teal */
+            border-radius: 10px;
+        }
+        #chat-history::-webkit-scrollbar-track {
+            background: #161b22;
+        }
+        /* Styling for User and AI message bubbles */
+        .user-message {
+            background: linear-gradient(135deg, #4c51bf, #6b46c1); /* Vibrant Indigo/Purple gradient for user */
+            margin-left: auto;
+        }
+        .ai-message {
+            background-color: #1f2937; /* Darker gray for AI */
+        }
+        /* Style for the generated image preview container */
+        .image-container {
+            border: 2px dashed #14b8a6;
+            background-color: #111827;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- HEADER: K1 Ai Branding and Credits (Updated to include your specific credit) -->
+    <header class="bg-gray-900 p-4 shadow-2xl sticky top-0 z-10 border-b-4 border-teal-500/50">
+        <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-500 text-center tracking-wider">K1 Ai Multimode</h1>
+        <p class="text-xs text-gray-400 text-center mt-1">Vision, Generation (nano-banana), and Chat powered by Gemini</p>
+        <!-- The user's original credit line -->
+        <p class="text-sm text-yellow-400 font-medium text-center mt-1">All Credits Go to **FFK1** and **Priyanshu**</p>
+    </header>
+
+    <!-- MAIN CHAT AREA -->
+    <main class="flex-grow flex flex-col p-4 overflow-hidden">
+        <!-- Chat History Container -->
+        <div id="chat-history" class="flex-grow overflow-y-auto space-y-4 p-4 rounded-xl bg-[#161b22] shadow-inner">
+            <!-- Initial welcome message -->
+            <div class="ai-message p-3 max-w-4/5 md:max-w-3/5 rounded-xl rounded-tl-none shadow-xl text-gray-200">
+                <span class="font-bold text-teal-400">K1 Ai:</span> Welcome! I'm ready to chat, search, analyze images (Vision), or create new ones (Generation).
+                <ul class="list-disc ml-5 mt-2 text-sm text-gray-300">
+                    <li>To chat, just type your question.</li>
+                    <li>To use **Vision/Editing**, click the <span class="text-indigo-400 font-medium">📷 Upload Image</span> button.</li>
+                    <li>To **Generate a new image**, click the <span class="text-pink-400 font-medium">✨ Generate Image</span> button and describe what you want!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Image Preview Area (Hidden by default) -->
+        <div id="image-preview-container" class="mt-4 p-3 bg-[#1f2937] border-2 border-dashed border-indigo-500 rounded-xl shadow-lg hidden">
+            <h3 class="text-sm font-semibold text-indigo-400 mb-2">Image for Analysis/Editing:</h3>
+            <img id="uploaded-image-preview" class="max-h-32 object-contain rounded-lg mx-auto" alt="Uploaded Image Preview">
+            <div class="flex justify-end mt-2">
+                <button id="clear-image-button" class="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-150">
+                    Clear Image
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator (Hidden by default) -->
+        <div id="loading-indicator" class="mt-4 p-3 bg-gray-700 text-teal-400 text-center rounded-lg shadow-xl hidden">
+            <svg class="animate-spin h-5 w-5 mr-3 inline-block" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            K1 Ai is processing...
+        </div>
+    </main>
+
+    <!-- INPUT FORM AND MODALITY BUTTONS -->
+    <div class="p-4 bg-gray-900 border-t border-gray-700 shadow-2xl">
+        <div class="flex flex-col space-y-3">
+            <!-- Modality Buttons -->
+            <div class="flex justify-center space-x-3 w-full">
+                <!-- Image Upload (Vision/Edit) -->
+                <input type="file" id="image-upload" accept="image/*" class="hidden">
+                <button
+                    id="upload-image-button"
+                    class="flex-1 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-200 shadow-lg transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                >
+                    📷 Upload Image (Vision/Edit)
+                </button>
+
+                <!-- Image Generation Mode Toggle -->
+                <button
+                    id="toggle-generation-mode"
+                    class="flex-1 px-4 py-2 bg-pink-600 text-white font-semibold rounded-xl hover:bg-pink-700 transition duration-200 shadow-lg transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                >
+                    ✨ Generate Image
+                </button>
+            </div>
+
+            <!-- Chat/Prompt Input -->
+            <form id="chat-form" class="flex space-x-3">
+                <input
+                    type="text"
+                    id="user-input"
+                    placeholder="Ask K1 Ai a question..."
+                    class="flex-grow p-3 border border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-teal-500 focus:border-teal-500 transition duration-150 shadow-inner placeholder-gray-500"
+                    required
+                >
+                <button
+                    type="submit"
+                    id="send-button"
+                    class="px-6 py-3 bg-teal-600 text-white font-semibold rounded-xl hover:bg-teal-700 transition duration-200 ease-in-out shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Send
+                </button>
+            </form>
+            <p id="mode-status" class="text-sm text-center text-gray-400">Current Mode: **Chat/Search**</p>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC (The Brains of the AI) -->
+    <script>
+        const chatHistory = document.getElementById('chat-history');
+        const userInput = document.getElementById('user-input');
+        const chatForm = document.getElementById('chat-form');
+        const sendButton = document.getElementById('send-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const toggleGenerationButton = document.getElementById('toggle-generation-mode');
+        const uploadImageButton = document.getElementById('upload-image-button');
+        const imageUploadInput = document.getElementById('image-upload');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const uploadedImagePreview = document.getElementById('uploaded-image-preview');
+        const clearImageButton = document.getElementById('clear-image-button');
+        const modeStatus = document.getElementById('mode-status');
+
+        // --- Core State and Config ---
+        // Keeping the API key empty as per instructions.
+        const apiKey = "";
+        let base64Image = null; // Stores the base64 data of the uploaded image
+        let isGenerationMode = false; // Flag for Image Generation mode
+
+        // --- Core API Configuration ---
+        // Text/Vision/Search Model
+        const TEXT_VISION_MODEL = 'gemini-2.5-flash-preview-09-2025';
+        const TEXT_VISION_URL = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_VISION_MODEL}:generateContent?key=${apiKey}`;
+
+        // Image Generation Model (User's requested "nano-banana" model)
+        const IMAGE_GEN_MODEL = 'gemini-2.5-flash-image-preview';
+        const IMAGE_GEN_URL = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_GEN_MODEL}:generateContent?key=${apiKey}`;
+        
+        // --- Helper Functions ---
+
+        /**
+         * Converts a File object (from input[type=file]) into a base64 string.
+         */
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    reject(new Error("No file provided."));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        /**
+         * Helper Function to Display Messages (Text, Vision Response, or Image Output)
+         */
+        function appendMessage(text, role, sources = [], imageBase64 = null) {
+            const isUser = role === 'user';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `p-3 max-w-4/5 md:max-w-3/5 rounded-xl shadow-md text-white ${isUser ? 'user-message rounded-tr-none' : 'ai-message rounded-tl-none'}`;
+            
+            if (imageBase64) {
+                // If an image was generated, display it
+                messageDiv.className += ' image-container';
+                messageDiv.innerHTML = `
+                    <span class="font-bold text-pink-400">K1 Ai Image Generated:</span>
+                    <p class="mt-1 mb-3 text-sm italic text-gray-300">Prompt: ${text}</p>
+                    <img src="data:image/png;base64,${imageBase64}" class="w-full h-auto rounded-lg shadow-xl" alt="Generated Image">
+                    <p class="mt-2 text-xs text-gray-400">Right-click or long-press to save the image.</p>
+                `;
+            } else {
+                // Display text message
+                messageDiv.innerHTML = `<span class="font-bold ${isUser ? 'text-teal-200' : 'text-teal-400'}">${isUser ? 'You' : 'K1 Ai'}:</span> ${text.replace(/\n/g, '<br>')}`;
+            }
+
+            // Add Grounding Sources if available
+            if (sources.length > 0) {
+                const sourcesContainer = document.createElement('div');
+                sourcesContainer.className = 'mt-2 pt-2 border-t border-gray-600 text-xs text-gray-400';
+                let sourcesHtml = '<strong>Sources:</strong><ul class="list-disc ml-4 mt-1 space-y-0.5">';
+                sources.forEach(source => {
+                    sourcesHtml += `<li><a href="${source.uri}" target="_blank" class="text-teal-400 hover:text-teal-300 transition duration-150 block overflow-hidden whitespace-nowrap overflow-ellipsis" style="max-width: 95%;">${source.title || source.uri}</a></li>`;
+                });
+                sourcesHtml += '</ul>';
+                sourcesContainer.innerHTML = sourcesHtml;
+                messageDiv.appendChild(sourcesContainer);
+            }
+
+            chatHistory.appendChild(messageDiv);
+            // Auto-scroll to the bottom
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        /**
+         * Generic Fetch with Retry mechanism using Exponential Backoff
+         */
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            if (!apiKey && url.includes("googleapis.com")) {
+                // If API Key is empty, the environment will provide it, proceed without error.
+            }
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        // 429 is a rate limit error, which we should retry
+                        if (response.status === 429 && i < maxRetries - 1) {
+                            console.log(`Rate limit hit (attempt ${i + 1}/${maxRetries}), retrying...`);
+                            throw new Error('Rate limit');
+                        }
+                        throw new Error(`HTTP error! Status: ${response.status}. Body: ${errorBody}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if (i === maxRetries - 1 || error.message !== 'Rate limit') throw error;
+                    
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 500;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        // --- Modality Functions ---
+
+        /**
+         * Handles Image Generation using the gemini-2.5-flash-image-preview model.
+         */
+        async function generateImage(prompt) {
+             // If base64Image is present, this is an Image-to-Image/Edit request
+             const contents = [
+                 {
+                     parts: [
+                         { text: prompt }
+                     ]
+                 }
+             ];
+
+             if (base64Image) {
+                contents[0].parts.push({
+                    inlineData: {
+                        mimeType: imageUploadInput.files[0].type || "image/jpeg",
+                        data: base64Image
+                    }
+                });
+                // Add a system instruction to guide image editing/customization
+                 contents.unshift({
+                    role: "user",
+                    parts: [{ text: "You are an expert image editor. Given the image and the prompt, modify the image according to the prompt. If the prompt is descriptive, generate a new image based on the input image's style/subject matter and the prompt."}]
+                 });
+             }
+
+
+            const payload = {
+                contents: contents,
+                generationConfig: {
+                    responseModalities: ['TEXT', 'IMAGE']
+                },
+            };
+
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            };
+
+            const response = await fetchWithRetry(IMAGE_GEN_URL, options);
+            const result = await response.json();
+            
+            const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+            if (!base64Data) {
+                const errorText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Failed to generate image. The prompt may be unsafe or the service returned an error.";
+                throw new Error(errorText);
+            }
+            
+            return base64Data;
+        }
+
+        /**
+         * Handles Text-Only Chat or Multimodal Vision requests.
+         */
+        async function generateChatOrVision(prompt) {
+            const contents = [];
+            
+            if (base64Image) {
+                // Vision/Multimodal case: Include image data
+                contents.push({
+                    role: "user",
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: imageUploadInput.files[0].type || "image/jpeg",
+                                data: base64Image
+                            }
+                        }
+                    ]
+                });
+            } else {
+                // Text/Search only case
+                contents.push({ role: "user", parts: [{ text: prompt }] });
+            }
+
+
+            const systemPrompt = "You are K1 Ai, a friendly, professional, and knowledgeable AI assistant. Use Google Search grounding for all factual questions. When analyzing an image, be descriptive and answer the user's question directly. Your response should be clear and markdown-formatted.";
+            
+            const payload = {
+                contents: contents,
+                tools: [{ "google_search": {} }], // Enable Google Search grounding
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            };
+
+            const response = await fetchWithRetry(TEXT_VISION_URL, options);
+            const result = await response.json();
+            const candidate = result.candidates?.[0];
+
+            if (candidate && candidate.content?.parts?.[0]?.text) {
+                const text = candidate.content.parts[0].text;
+                let sources = [];
+
+                // Extract grounding sources
+                const groundingMetadata = candidate.groundingMetadata;
+                if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                    sources = groundingMetadata.groundingAttributions
+                        .map(attribution => ({
+                            uri: attribution.web?.uri,
+                            title: attribution.web?.title,
+                        }))
+                        .filter(source => source.uri && source.title);
+                }
+
+                return { text, sources };
+            } else {
+                const safetyRating = result.candidates?.[0]?.safetyRatings?.[0];
+                if (safetyRating) {
+                     return { text: `I cannot answer this question because it was flagged under a safety filter (${safetyRating.category}).`, sources: [] };
+                }
+                throw new Error("Received an empty or malformed response from the service.");
+            }
+        }
+
+        // --- Event Listeners and Logic ---
+
+        // 1. Image Upload Button Click
+        uploadImageButton.addEventListener('click', () => {
+            // Trigger the hidden file input
+            imageUploadInput.click();
+        });
+
+        // 2. File Input Change (Handles image selection)
+        imageUploadInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    const mimeType = file.type;
+                    if (!mimeType.startsWith('image/')) {
+                        console.error("Not a valid image file.");
+                        return;
+                    }
+                    
+                    const base64 = await fileToBase64(file);
+                    base64Image = base64;
+                    uploadedImagePreview.src = URL.createObjectURL(file);
+                    imagePreviewContainer.classList.remove('hidden');
+
+                    // Set mode status
+                    modeStatus.innerHTML = 'Current Mode: **Vision/Image Edit** (<span class="text-indigo-400">Image is ready</span>)';
+                    userInput.placeholder = "Ask a question about this image, or describe an edit you want...";
+
+                } catch (error) {
+                    console.error("Error processing file:", error);
+                    // Append error message to chat
+                    appendMessage(`Error: Could not process the image. ${error.message}`, 'ai');
+              
